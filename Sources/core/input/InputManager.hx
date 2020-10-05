@@ -1,5 +1,6 @@
 package core.input;
 
+import core.gameobjects.RenderableGameObject;
 import core.input.keyboard.KeyboardManager;
 import kha.math.Vector2;
 import core.cameras.Camera;
@@ -370,14 +371,10 @@ class InputManager {
    * Checks if the Game Object has an input component that is enabled, that it will render,
    * and finally, if it has a parent, that the parent parent, or any ancestor, is visible or not.
    */
-  public function isInputCandidate(gameObject:GameObject, camera:Camera) {
-    var working:{//To-Do : Working
-      input:InteractiveObject,
-      willRender:Camera->Bool
-    } = cast gameObject;
-    var input = working.input;
+  public function isInputCandidate(gameObject:RenderableGameObject, camera:Camera) {
+    var input = gameObject.input;
 
-		if (input == null || !input.enabled || (!input.alwaysEnabled && !working.willRender(camera))) {
+		if (input == null || !input.enabled || (!input.alwaysEnabled && !gameObject.willRender(camera))) {
       return false;
     }
 
@@ -401,7 +398,7 @@ class InputManager {
    *
    * This method is called automatically by InputPlugin.hitTestPointer and doesn't usually need to be invoked directly.
    */
-	public function hitTest(pointer:Pointer, gameObjects:Array<GameObject>, camera:Camera, ?output:Array<GameObject>) {
+	public function hitTest(pointer:Pointer, gameObjects:Array<RenderableGameObject>, camera:Camera, ?output:Array<RenderableGameObject>) {
     if (output == null) output = _tempHitTest;
 
     var csx = camera.scrollX;
@@ -421,25 +418,16 @@ class InputManager {
     var point = new Vector2();
 
     for (go in gameObjects) {
-      var working:{
-        scrollFactorX:Float,
-        scrollFactorY:Float,
-        x:Float,
-        y:Float,
-        rotation:Float,
-        scaleX:Float,
-        scaleY:Float
-      } = cast go;
 			// Checks if the Game Object can receive input (isn't being ignored by the camera, invisible, etc)
       // and also checks all of its parents, if any
       if (!isInputCandidate(go, camera))
         continue;
 
-      var px = _tempPoint.x + (csx * working.scrollFactorX) - csx;
-      var py = _tempPoint.y + (csy * working.scrollFactorY) - csy;
+      var px = _tempPoint.x + (csx * go.scrollFactorX) - csx;
+      var py = _tempPoint.y + (csy * go.scrollFactorY) - csy;
 
       // TODO: add in parentContainer code
-      transformXY(px, py, working.x, working.y, working.rotation, working.scaleX, working.scaleY, point);
+      transformXY(px, py, go.x, go.y, go.rotation, go.scaleX, go.scaleY, point);
       
       if (isPointWithinHitArea(go, point.x, point.y))
         output.push(go);
@@ -455,17 +443,12 @@ class InputManager {
    *
    * If the coordinates are within the hit area they are set into the Game Objects Input `localX` and `localY` properties.
    */
-	public function isPointWithinHitArea(go:GameObject, x:Float, y:Float) {
-    var working:{
-      displayOriginX:Float,
-      displayOriginY:Float,
-      input:InteractiveObject
-    } = cast go;
+	public function isPointWithinHitArea(go:RenderableGameObject, x:Float, y:Float) {
     // Normalize the origin
-    x += working.displayOriginX;
-    y += working.displayOriginY;
+    x += go.displayOriginX;
+    y += go.displayOriginY;
 
-    var input = working.input;
+    var input = go.input;
 
     if (input != null && input.hitAreaCallback(input.hitArea, x, y, go)) {
       input.localX = x;
@@ -488,9 +471,8 @@ class InputManager {
     if (object.hitArea == null) return false;
 
     // Normalize the origin
-    var working:{displayOriginX:Float, displayOriginY:Float} = cast object.gameObject;
-    x += working.displayOriginX;
-    y += working.displayOriginY;
+    x += object.gameObject.displayOriginX;
+    y += object.gameObject.displayOriginY;
 
     object.localX = x;
     object.localY = y;

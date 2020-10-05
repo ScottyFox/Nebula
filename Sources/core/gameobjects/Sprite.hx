@@ -1,23 +1,10 @@
 package core.gameobjects;
 
+import core.cameras.Camera;
+import core.gameobjects.RenderableGameObject;
 import core.animations.AnimationState;
 import core.animations.AnimationFrame;
 import core.scene.Scene;
-
-import core.gameobjects.components.Alpha;
-import core.gameobjects.components.BlendMode;
-import core.gameobjects.components.Depth;
-import core.gameobjects.components.Flip;
-import core.gameobjects.components.GetBounds;
-import core.gameobjects.components.Mask;
-import core.gameobjects.components.Origin;
-import core.gameobjects.components.Pipeline;
-import core.gameobjects.components.ScrollFactor;
-import core.gameobjects.components.Size;
-import core.gameobjects.components.TextureCrop;
-import core.gameobjects.components.Tint;
-import core.gameobjects.components.TransformMixin;
-import core.gameobjects.components.Visible;
 
 /**
  * A Sprite Game Object.
@@ -30,7 +17,7 @@ import core.gameobjects.components.Visible;
  * As such, Sprites take a fraction longer to process and have a larger API footprint due to the Animation
  * Component. If you do not require animation then you can safely use Images to replace Sprites in all cases.
  */
-class Sprite extends GameObject implements Alpha implements BlendMode implements Depth implements Flip implements GetBounds implements Mask implements Origin implements Pipeline implements ScrollFactor implements Size implements TextureCrop implements Tint implements TransformMixin implements Visible {
+class Sprite extends RenderableGameObject {
   /**
    * The Animation State component of this Sprite.
    *
@@ -71,6 +58,15 @@ class Sprite extends GameObject implements Alpha implements BlendMode implements
   override public function preUpdate(time:Float, delta:Float) {
     anims.update(time, delta);
   }
+
+	/**
+	 * Renders this Game Object with the Canvas Renderer to the given Camera.
+	 * The object will not render if any of its renderFlags are set or it is being actively filtered out by the Camera.
+	 * This method should not be called directly. It is a utility function of the Render module.
+	 */
+	override public function render(renderer:Renderer, camera:Camera) {
+		renderer.batchImage(this, frame, camera);
+	}
 
   /**
    * Start playing the given animation on this Sprite.
