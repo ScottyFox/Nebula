@@ -33,7 +33,7 @@ class PlayScene extends Scene {
 	override function create() {
     sys.displayList.add([new Image(this, 400, 300, 'sky')]);
 
-    _player = new Image(this, 600, 400, 'star');
+    _player = new Player(this, 600, 400, 'star');
     
     sys.displayList.add([_player]);
 

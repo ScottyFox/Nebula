@@ -216,8 +216,11 @@ class Mixin
 			
 		// error if mixin was included twice or more somewhere in hierarchy 		
 		var includedIn = whereMixinWasIncluded(lc, mixinFql, true);
-		if (includedIn != null)
-			Context.fatalError('Mixin <${mixinFql}> was already included in <${getFqlClassName(includedIn)}>', includedIn.pos);
+		if (includedIn != null){
+      return null;
+      Context.fatalError('Mixin <${mixinFql}> was already included in <${getFqlClassName(includedIn)}>', includedIn.pos);
+    }
+			
 		
 
 		markAsMixinWasIncludedHere(lc, mixinFql);

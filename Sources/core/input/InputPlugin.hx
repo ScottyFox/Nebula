@@ -1,6 +1,6 @@
 package core.input;
 
-import core.gameobjects.RenderableGameObject;
+import core.textures.Frame;
 import core.input.keyboard.KeyboardPlugin;
 import core.geom.rectangle.Rectangle;
 import core.scene.Settings;
@@ -133,25 +133,25 @@ class InputPlugin extends EventEmitter {
   public var dragTimeThreshold:Float = 0;
 
   // Used to temporarily store the results of the Hit Test
-	public var _temp:Array<RenderableGameObject> = [];
+	public var _temp:Array<GameObject> = [];
 
   // Used to temporarily store the results of the Hit Test dropZones
   public var _tempZones = [];
 
   // A list of all Game Objects that have been set to be interactive in the Scene this Input Plugin is managing.
-	public var _list:Array<RenderableGameObject> = [];
+	public var _list:Array<GameObject> = [];
 
   // Objects waiting to be inserted to the list on the next call to 'begin'.
-	public var _pendingInsertion:Array<RenderableGameObject> = [];
+	public var _pendingInsertion:Array<GameObject> = [];
 
   // Objects waiting to be removed from the list on the next call to 'begin'.
-	public var _pendingRemoval:Array<RenderableGameObject> = [];
+	public var _pendingRemoval:Array<GameObject> = [];
 
   // A list of all Game Objects that have been enabled for dragging.
-	public var _draggable:Array<RenderableGameObject> = [];
+	public var _draggable:Array<GameObject> = [];
 
   //  A list of all Interactive Objects currently considered as being 'draggable' by any pointer, indexed by pointer ID.
-	public var _drag:Map<String, Array<RenderableGameObject>> = [
+	public var _drag:Map<String, Array<GameObject>> = [
     '0' => [],
     '1' => [],
     '2' => [],
@@ -169,7 +169,7 @@ class InputPlugin extends EventEmitter {
   public var _dragState:Array<Int> = [];
 
   // A list of all Interactive Objects currently considered as being 'over' by any pointer, indexed by pointer ID.
-	public var _over:Map<String, Array<RenderableGameObject>> = [
+	public var _over:Map<String, Array<GameObject>> = [
     '0' => [],
     '1' => [],
     '2' => [],
@@ -448,19 +448,23 @@ class InputPlugin extends EventEmitter {
    * Clears a Game Object so it no longer has an Interactive Object associated with it.
    * The Game Object is then queued for removal from the Input Plugin on the next update.
    */
-	public function clear(go:RenderableGameObject, ?skipQueue:Bool = false) {
+	public function clear(go:GameObject, ?skipQueue:Bool = false) {
+    var working:{
+      input:InteractiveObject
+    } = cast go;
+    //TODO: check if valid
 
     // If GameObject.input already cleared from higher class
-    if (go.input != null) return;
+    if (working.input != null) return;
 
     if (!skipQueue) queueForRemoval(go);
 
-    go.input.gameObject = null;
-    go.input.target = null;
-    go.input.hitArea = null;
-    go.input.hitAreaCallback = null;
+    working.input.gameObject = null;
+    working.input.target = null;
+    working.input.hitArea = null;
+    working.input.hitAreaCallback = null;
 
-    go.input = null;
+    working.input = null;
 
     // Clear from _draggable, _drag and _over
     var index = _draggable.indexOf(go);
@@ -486,7 +490,7 @@ class InputPlugin extends EventEmitter {
    * An input disabled Game Object still retains its Interactive Object component and can be re-enabled
    * at any time, by passing it to `InputPlugin.enable`.
    */
-	public function disable(go:RenderableGameObject) {
+	public function disable(go:{input:InteractiveObject}) { //GameObject.input
     go.input.enabled = false;
   }
 
@@ -507,17 +511,22 @@ class InputPlugin extends EventEmitter {
    *
    * You can also provide an Input Configuration Object as the only argument to this method.
    */
-	public function enable(go:RenderableGameObject, hitArea:Any, hitAreaCallback:Any, ?dropZone:Bool = false) {
-    if (go.input != null) {
+	public function enable(go:GameObject, hitArea:Any, hitAreaCallback:Any, ?dropZone:Bool = false) {
+    var working:{
+      input:InteractiveObject
+    } = cast go;
+    //TODO: check if valid
+
+    if (working.input != null) {
       // If it already has an InteractiveObject then just enable it and return
-      go.input.enabled = true;
+      working.input.enabled = true;
     } else {
       // Create an InteractiveObject and enabled it
       setHitArea([go]/*, hitArea, hitAreaCallback*/);
     }
 
-    if (go.input != null && dropZone != null && go.input.dropZone == null) {
-      go.input.dropZone = dropZone;
+    if (working.input != null && dropZone != null && working.input.dropZone == null) {
+      working.input.dropZone = dropZone;
     }
 
     return this;
@@ -540,8 +549,8 @@ class InputPlugin extends EventEmitter {
 
       // Filter out the drop zones
       for (obj in over) {
-
-        if (obj.input.dropZone != null) {
+        var working:{input:InteractiveObject} = cast obj;
+        if (working.input.dropZone != null) {
           _tempZones.push(obj);
         }
       }
@@ -571,21 +580,21 @@ class InputPlugin extends EventEmitter {
 
 		// Go through all objects the pointer was over and fire their events / callbacks
     for (go in _temp) {
-
-      if (go.input == null) continue;
+      var working:{input:InteractiveObject} = cast go;
+      if (working.input == null) continue;
 
       total++;
 
-      go.emit('GAMEOBJECT_POINTER_DOWN', pointer, go.input.localX, go.input.localY/*, _eventContainer*/);
+      go.emit('GAMEOBJECT_POINTER_DOWN', pointer, working.input.localX, working.input.localY/*, _eventContainer*/);
       
-      if (/*_eventData.cancelled | */go.input == null) {
+      if (/*_eventData.cancelled | */working.input == null) {
         aborted = true;
         break;
       }
 
       emit('GAMEOBJECT_DOWN', pointer, go/*, _eventContainer*/);
 
-      if (/*_eventData.cancelled || */go.input == null) {
+      if (/*_eventData.cancelled || */working.input == null) {
         aborted = true;
         break;
       }
@@ -666,19 +675,20 @@ class InputPlugin extends EventEmitter {
     var list = _drag.get(pointer.id + '');
 
     for (go in list) {
+      var working:{input:InteractiveObject,x:Float,y:Float} = cast go;
       
-      go.input.dragState = 2;
+      working.input.dragState = 2;
 
-      go.input.dragStartX = go.x;
-      go.input.dragStartY = go.y;
+      working.input.dragStartX = working.x;
+      working.input.dragStartY = working.y;
 
-      go.input.dragStartXGlobal = pointer.worldX;
-      go.input.dragStartYGlobal = pointer.worldY;
+      working.input.dragStartXGlobal = pointer.worldX;
+      working.input.dragStartYGlobal = pointer.worldY;
 
-      go.input.dragX = go.input.dragStartXGlobal - go.input.dragStartX;
-      go.input.dragY = go.input.dragStartYGlobal - go.input.dragStartY;
+      working.input.dragX = working.input.dragStartXGlobal - working.input.dragStartX;
+      working.input.dragY = working.input.dragStartYGlobal - working.input.dragStartY;
 
-      go.emit('GAMEOBJECT_DRAG_START', pointer, go.input.dragX, go.input.dragY);
+      go.emit('GAMEOBJECT_DRAG_START', pointer, working.input.dragX, working.input.dragY);
 
       emit('DRAG_START', pointer, go);
     }
@@ -702,10 +712,11 @@ class InputPlugin extends EventEmitter {
     setDragState(pointer, 1);
 
     // Get draggable objects, sort them, pick the top (or all) and store them somewhere
-		var dragList:Array<RenderableGameObject> = [];
+		var dragList:Array<GameObject> = [];
 
     for (go in _temp) {
-      if (go.input.isDraggable && (go.input.dragState == 0)) {
+      var working:{input:InteractiveObject} = cast go;
+      if (working.input.isDraggable && (working.input.dragState == 0)) {
         dragList.push(go);
       }
     }
@@ -753,53 +764,53 @@ class InputPlugin extends EventEmitter {
     var list = _drag.get(pointer.id + '');
 
     for (go in list) {
-
+      var working:{input:InteractiveObject} = cast go;
       // If this GO has a target then let's check it
-      if (go.input.target != null) {
-        var index = _tempZones.indexOf(go.input.target);
+      if (working.input.target != null) {
+        var index = _tempZones.indexOf(working.input.target);
 
         // Got a target, are we still over it?
         if (index == 0) {
           // We're still over it, and it's still the top of the display list, phew ...
-					go.emit('GAMEOBJECT_DRAG_OVER', pointer, go.input.target);
+					go.emit('GAMEOBJECT_DRAG_OVER', pointer, working.input.target);
 
-					emit('DRAG_OVER', pointer, go, go.input.target);
+					emit('DRAG_OVER', pointer, go, working.input.target);
         } else if (index > 0) {
           // Still over it but it's no longer top of the display list (targets must always be at the top)
-					go.emit('GAMEOBJECT_DRAG_LEAVE', pointer, go.input.target);
+					go.emit('GAMEOBJECT_DRAG_LEAVE', pointer, working.input.target);
 
-					emit('DRAG_LEAVE', pointer, go, go.input.target);
+					emit('DRAG_LEAVE', pointer, go, working.input.target);
 
-          go.input.target = _tempZones[0];
+          working.input.target = _tempZones[0];
 
-					go.emit('GAMEOBJECT_DRAG_ENTER', pointer, go.input.target);
+					go.emit('GAMEOBJECT_DRAG_ENTER', pointer, working.input.target);
 
-					emit('DRAG_ENTER', pointer, go, go.input.target);
+					emit('DRAG_ENTER', pointer, go, working.input.target);
         } else {
 					// Nope, we've moved on (or the target has!), leave the old target
-					go.emit('GAMEOBJECT_DRAG_LEAVE', pointer, go.input.target);
+					go.emit('GAMEOBJECT_DRAG_LEAVE', pointer, working.input.target);
 
-					emit('DRAG_LEAVE', pointer, go, go.input.target);
+					emit('DRAG_LEAVE', pointer, go, working.input.target);
 
 					// Anything new to replace it?
 					// Yup!
 					if (_tempZones[0] != null) {
-            go.input.target = _tempZones[0];
+            working.input.target = _tempZones[0];
 
-						go.emit('GAMEOBJECT_DRAG_ENTER', pointer, go.input.target);
+						go.emit('GAMEOBJECT_DRAG_ENTER', pointer, working.input.target);
 
-						emit('DRAG_ENTER', pointer, go, go.input.target);
+						emit('DRAG_ENTER', pointer, go, working.input.target);
 					} else {
 						// Nope
-						go.input.target = null;
+						working.input.target = null;
 					}
         }
-			} else if (go.input.target == null && _tempZones[0] != null) {
-        go.input.target = _tempZones[0];
+			} else if (working.input.target == null && _tempZones[0] != null) {
+        working.input.target = _tempZones[0];
 
-				go.emit('GAMEOBJECT_DRAG_ENTER', pointer, go.input.target);
+				go.emit('GAMEOBJECT_DRAG_ENTER', pointer, working.input.target);
 
-				emit('DRAG_ENTER', pointer, go, go.input.target);
+				emit('DRAG_ENTER', pointer, go, working.input.target);
       }
 
       var dragX:Float;
@@ -807,8 +818,8 @@ class InputPlugin extends EventEmitter {
 
       // TODO: container code
 
-      dragX = pointer.worldX - go.input.dragX;
-      dragY = pointer.worldY - go.input.dragY;
+      dragX = pointer.worldX - working.input.dragX;
+      dragY = pointer.worldY - working.input.dragY;
 
       go.emit('GAMEOBJECT_DRAG', pointer, dragX, dragY);
 
@@ -827,27 +838,28 @@ class InputPlugin extends EventEmitter {
 		var list = _drag.get(pointer.id + '');
 
 		for (go in list) {
-			if (go.input != null && go.input.dragState == 2) {
-				go.input.dragState = 0;
+      var working:{input:InteractiveObject,displayOriginX:Float,displayOriginY:Float} = cast go;
+			if (working.input != null && working.input.dragState == 2) {
+				working.input.dragState = 0;
 
-				go.input.dragX = go.input.localX - go.displayOriginX;
-				go.input.dragY = go.input.localY - go.displayOriginY;
+				working.input.dragX = working.input.localX - working.displayOriginX;
+				working.input.dragY = working.input.localY - working.displayOriginY;
 
 				var dropped = false;
 
-				if (go.input.target != null) {
-					go.emit('GAMEOBJECT_DROP', pointer, go.input.target);
+				if (working.input.target != null) {
+					go.emit('GAMEOBJECT_DROP', pointer, working.input.target);
 
-					emit('DROP', pointer, go, go.input.target);
+					emit('DROP', pointer, go, working.input.target);
 
-					go.input.target = null;
+					working.input.target = null;
 
 					dropped = true;
 				}
 
 				// And finally the dragend event
-				if (go.input != null) {
-					go.emit('GAMEOBJECT_DRAG_END', pointer, go.input.dragX, go.input.dragY, dropped);
+				if (working.input != null) {
+					go.emit('GAMEOBJECT_DRAG_END', pointer, working.input.dragX, working.input.dragY, dropped);
 
 					emit('DRAG_END', pointer, go, dropped);
 				}
@@ -872,23 +884,24 @@ class InputPlugin extends EventEmitter {
 		var aborted = false;
 
 		//  Go through all objects the pointer was over and fire their events / callbacks
-		for (go in _temp) {
-			if (go.input == null) {
+		for (go in _temp){
+      var working:{input:InteractiveObject} = cast go;
+			if (working.input == null) {
 				continue;
 			}
 
 			total++;
 
-			go.emit('GAMEOBJECT_POINTER_MOVE', pointer, go.input.localX, go.input.localY/*, _eventContainer*/);
+			go.emit('GAMEOBJECT_POINTER_MOVE', pointer, working.input.localX, working.input.localY/*, _eventContainer*/);
 
-			if (/*_eventData.cancelled || */go.input == null) {
+			if (/*_eventData.cancelled || */working.input == null) {
 				aborted = true;
 				break;
 			}
 
 			emit('GAMEOBJECT_MOVE', pointer, go/*, _eventContainer*/);
 
-			if (/*_eventData.cancelled || */go.input == null) {
+			if (/*_eventData.cancelled || */working.input == null) {
 				aborted = true;
 				break;
 			}
@@ -919,7 +932,8 @@ class InputPlugin extends EventEmitter {
 
 		// Go through all objects the pointer was over and fire their events / callbacks
 		for (go in _temp) {
-			if (go.input == null) {
+      var working:{input:InteractiveObject} = cast go;
+			if (working.input == null) {
 				continue;
 			}
 
@@ -927,14 +941,14 @@ class InputPlugin extends EventEmitter {
 
 			go.emit('GAMEOBJECT_POINTER_WHEEL', pointer, delta/*, _eventContainer*/);
 
-			if (/*_eventData.cancelled || */go.input == null) {
+			if (/*_eventData.cancelled || */working.input == null) {
 				aborted = true;
 				break;
 			}
 
 			emit('GAMEOBJECT_WHEEL', pointer, go, delta/*, _eventContainer*/);
 
-			if (/*_eventData.cancelled || */go.input == null) {
+			if (/*_eventData.cancelled || */working.input == null) {
 				aborted = true;
 				break;
 			}
@@ -964,24 +978,25 @@ class InputPlugin extends EventEmitter {
 			var aborted = false;
 
 			for (go in _temp) {
-				if (go.input == null) {
+        var working:{input:InteractiveObject} = cast go;
+				if (working.input == null) {
 					continue;
 				}
 
 				justOver.push(go);
 
-				go.emit('GAMEOBJECT_POINTER_OVER', pointer, go.input.localX, go.input.localY/*, _eventContainer*/);
+				go.emit('GAMEOBJECT_POINTER_OVER', pointer, working.input.localX, working.input.localY/*, _eventContainer*/);
 
 				totalInteracted++;
 
-				if (/*_eventData.cancelled || */go.input == null) {
+				if (/*_eventData.cancelled || */working.input == null) {
 					aborted = true;
 					break;
 				}
 
 				emit('GAMEOBJECT_OVER', pointer, go/*, _eventContainer*/);
 
-				if (/*_eventData.cancelled || */go.input == null) {
+				if (/*_eventData.cancelled || */working.input == null) {
 					aborted = true;
 					break;
 				}
@@ -1016,7 +1031,8 @@ class InputPlugin extends EventEmitter {
 
 			// Call onOut for everything in the previouslyOver array
 			for (go in previouslyOver) {
-        if (go.input == null) {
+        var working:{input:InteractiveObject} = cast go;
+        if (working.input == null) {
           continue;
         }
 
@@ -1024,14 +1040,14 @@ class InputPlugin extends EventEmitter {
 
         totalInteracted++;
 
-        if (/*_eventData.cancelled || */go.input == null) {
+        if (/*_eventData.cancelled || */working.input == null) {
           aborted = true;
           break;
         }
 
         emit('GAMEOBJECT_OUT', pointer, go/*, _eventContainer*/);
 
-        if (/*_eventData.cancelled || */go.input == null) {
+        if (/*_eventData.cancelled || */working.input == null) {
           aborted = true;
           break;
         }
@@ -1096,7 +1112,8 @@ class InputPlugin extends EventEmitter {
 
 			//  Call onOut for everything in the justOut array
 			for (go in justOut) {
-				if (go.input == null) {
+        var working:{input:InteractiveObject} = cast go;
+				if (working.input == null) {
 					continue;
 				}
 
@@ -1104,14 +1121,14 @@ class InputPlugin extends EventEmitter {
 
 				totalInteracted++;
 
-				if (/*_eventData.cancelled || */go.input == null) {
+				if (/*_eventData.cancelled || */working.input == null) {
 					aborted = true;
 					break;
 				}
 
         emit('GAMEOBJECT_OUT', pointer, go/*, _eventContainer*/);
 
-				if (/*_eventData.cancelled || */go.input == null) {
+				if (/*_eventData.cancelled || */working.input == null) {
 					aborted = true;
 					break;
 				}
@@ -1134,22 +1151,23 @@ class InputPlugin extends EventEmitter {
 
 			// Call onOver for everything in the justOver array
 			for (go in justOver) {
-				if (go.input == null) {
+        var working:{input:InteractiveObject} = cast go;
+				if (working.input == null) {
 					continue;
 				}
 
-				go.emit('GAMEOBJECT_POINTER_OVER', pointer, go.input.localX, go.input.localY/*, _eventContainer*/);
+				go.emit('GAMEOBJECT_POINTER_OVER', pointer, working.input.localX, working.input.localY/*, _eventContainer*/);
 
 				totalInteracted++;
 
-				if (/*_eventData.cancelled || */go.input == null) {
+				if (/*_eventData.cancelled || */working.input == null) {
 					aborted = true;
 					break;
 				}
 
 				emit('GAMEOBJECT_OVER', pointer, go/*, _eventContainer*/);
 
-				if (/*_eventData.cancelled || */go.input == null) {
+				if (/*_eventData.cancelled || */working.input == null) {
 					aborted = true;
 					break;
 				}
@@ -1179,20 +1197,21 @@ class InputPlugin extends EventEmitter {
 
 		// Go through all objects the pointer was over and fire their events / callbacks
 		for (go in _temp) {
-      if (go.input == null) {
+      var working:{input:InteractiveObject} = cast go;
+      if (working.input == null) {
 				continue;
 			}
 
-			go.emit('GAMEOBJECT_POINTER_UP', pointer, go.input.localX, go.input.localY/*, _eventContainer*/);
+			go.emit('GAMEOBJECT_POINTER_UP', pointer, working.input.localX, working.input.localY/*, _eventContainer*/);
 
-			if (/*_eventData.cancelled || */go.input == null) {
+			if (/*_eventData.cancelled || */working.input == null) {
 				aborted = true;
 				break;
 			}
 
 			emit('GAMEOBJECT_UP', pointer, go/*, _eventContainer*/);
 
-			if (/*_eventData.cancelled || */go.input == null) {
+			if (/*_eventData.cancelled || */working.input == null) {
 				aborted = true;
 				break;
 			}
@@ -1214,7 +1233,7 @@ class InputPlugin extends EventEmitter {
   /**
    * Queues a Game Object for insertion into this Input Plugin on the next update.
    */
-	public function queueForInsertion(go:RenderableGameObject) {
+	public function queueForInsertion(go:GameObject) {
 		if (_pendingInsertion.indexOf(go) == -1 && _list.indexOf(go) == -1) {
 			_pendingInsertion.push(go);
 		}
@@ -1225,7 +1244,7 @@ class InputPlugin extends EventEmitter {
   /**
    * Queues a Game Object for removal from this Input Plugin on the next update.
    */
-	public function queueForRemoval(go:RenderableGameObject) {
+	public function queueForRemoval(go:GameObject) {
     _pendingRemoval.push(go);
 
     return this;
@@ -1238,9 +1257,10 @@ class InputPlugin extends EventEmitter {
    *
    * A Game Object will not fire drag events unless it has been specifically enabled for drag.
    */
-	public function setDraggable(children:Array<RenderableGameObject>, ?value:Bool = true) {
+	public function setDraggable(children:Array<GameObject>, ?value:Bool = true) {
 		for (go in children) {
-			go.input.isDraggable = value;
+      var working:{input:InteractiveObject} = cast go;
+			working.input.isDraggable = value;
 
 			var index = _draggable.indexOf(go);
 
@@ -1258,7 +1278,7 @@ class InputPlugin extends EventEmitter {
    * Given an array of Game Objects, sort the array and return it, so that the objects are in depth index order
    * with the lowest at the bottom.
    */
-	public function sortGameObjects(children:Array<RenderableGameObject>) {
+	public function sortGameObjects(children:Array<GameObject>) {
 		if (children.length < 2) {
 			return children;
 		}
@@ -1293,7 +1313,7 @@ class InputPlugin extends EventEmitter {
 	 * those values fall within the area of the shape or not. All of the Phaser geometry objects provide this,
 	 * such as `Phaser.Geom.Rectangle.Contains`.
    */
-	public function setHitArea(gameObjects:Array<RenderableGameObject>) {
+	public function setHitArea(gameObjects:Array<GameObject>) {
     // TODO: code for more complext hit areas
     return setHitAreaFromTexture(gameObjects);
   }
@@ -1302,26 +1322,32 @@ class InputPlugin extends EventEmitter {
    * Sets the hit area for an array of Game Objects to be a `Phaser.Geom.Rectangle` shape, using
    * the Game Objects texture frame to define the position and size of the hit area.
    */
-	public function setHitAreaFromTexture(gameObjects:Array<RenderableGameObject>, ?callback:Rectangle->Float->Float->RenderableGameObject->Bool) {
+	public function setHitAreaFromTexture(gameObjects:Array<GameObject>, ?callback:Rectangle->Float->Float->GameObject->Bool) {
 		if (callback == null)
-			callback = (rect:Rectangle, x:Float, y:Float, go:RenderableGameObject) -> { RectangleUtils.contains(rect, x, y); };
+			callback = (rect:Rectangle, x:Float, y:Float, go:GameObject) -> { RectangleUtils.contains(rect, x, y); };
 
     for (go in gameObjects) {
-      var frame = go.frame;
+      var working:{
+        frame:Frame,
+        width:Float,
+        height:Float,
+        input:InteractiveObject
+      } = cast go;
+      var frame = working.frame;
 
       var width:Float = 0;
       var height:Float = 0;
 
-      if (go.width > 0) {
-        width = go.width;
-        height = go.height;
+      if (working.width > 0) {
+        width = working.width;
+        height = working.height;
       } else if (frame != null) {
         width = frame.realWidth;
         height = frame.realHeight;
       }
 
 			if (width != 0 && height != 0) {
-				go.input = new InteractiveObject(go, new Rectangle(0, 0, width, height), callback);
+				working.input = new InteractiveObject(go, new Rectangle(0, 0, width, height), callback);
 
 				queueForInsertion(go);
 			}

@@ -17,12 +17,13 @@ class MenuScene extends Scene {
 	}
 
 	override function preload() {
-		load.image('star', 'star');
+    load.image('star', 'star');
+    load.image('dude', 'dude');
 	}
 
 	override function create() {
     _startButton = new Image(this, 400, 300, 'star');
-    _startButton.setInteractive();
+    //_startButton.setInteractive(); TO-DO find out why this doesnt have Interactive
 
     _startButton.on('GAMEOBJECT_POINTER_DOWN', () -> {
       trace('ayy I was clicked');

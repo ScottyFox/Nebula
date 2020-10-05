@@ -448,6 +448,7 @@ class Animation {
     var frame:AnimationFrame;
 
     for (i in 0...frames.length) {
+      frame = frames[i];
       frame.index = i + 1;
       frame.isFirst = false;
       frame.isLast = false;

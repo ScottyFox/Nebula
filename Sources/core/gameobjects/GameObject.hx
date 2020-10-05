@@ -360,7 +360,7 @@ class GameObject extends EventEmitter {
 			scene.sys.displayList.remove([this]);
 		}
 
-		input = null;
+		// input = null; ??? TODO: Fix this later
 
 		// TODO: data clear
 
