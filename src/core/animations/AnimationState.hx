@@ -964,28 +964,32 @@ class AnimationState {
     }
 
     if (!hasStarted) {
-      if (accumulator >= nextTick) {
-        // Process one frame advance as standard
+			if (accumulator >= delayCounter) {
+				accumulator -= delayCounter;
 
-        if (forward) {
-          currentAnim.nextFrame(this);
-        } else {
-          currentAnim.previousFrame(this);
-        }
+				handleStart();
+			}
+    } else if (accumulator >= nextTick) {
+      // Process one frame advance as standard
 
-        // And only do more if we're skipping frames and have time left
-        if (isPlaying && _pendingStop == 0 && skipMissedFrames && accumulator > nextTick) {
-          var safetyNet = 0;
+      if (forward) {
+        currentAnim.nextFrame(this);
+      } else {
+        currentAnim.previousFrame(this);
+      }
 
-          while (accumulator > nextTick && safetyNet < 60) {
-            if (forward) {
-              currentAnim.nextFrame(this);
-            } else {
-              currentAnim.previousFrame(this);
-            }
+      // And only do more if we're skipping frames and have time left
+      if (isPlaying && _pendingStop == 0 && skipMissedFrames && accumulator > nextTick) {
+        var safetyNet = 0;
 
-            safetyNet++;
+        while (accumulator > nextTick && safetyNet < 60) {
+          if (forward) {
+            currentAnim.nextFrame(this);
+          } else {
+            currentAnim.previousFrame(this);
           }
+
+          safetyNet++;
         }
       }
     }
