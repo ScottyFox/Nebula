@@ -1,7 +1,5 @@
-let project = new Project('Phaser3 Game');
+let project = new Project('Nebula');
 project.addAssets('assets/**');
 project.addShaders('shaders/**');
 project.addSources('src');
-project.addSources('lib');
-project.addParameter('--macro addGlobalMetadata("", "@:build(mixin.Mixin.sugar())", true, true, false)');
 resolve(project);
